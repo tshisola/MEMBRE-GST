@@ -10,7 +10,8 @@ Application de gestion des membres, pointage, listes et administration pour **Im
 | CI/CD | GitHub Actions |
 
 **Web production :** https://membremedia.web.app  
-**Projet Firebase :** `membremedia`
+**Projet Firebase :** `membremedia`  
+**Dépôt GitHub :** https://github.com/tshisola/MEMBRE-GST
 
 ---
 
@@ -107,7 +108,7 @@ Voir [docs/BRANCHING.md](docs/BRANCHING.md).
 - `FIREBASE_SERVICE_ACCOUNT` — JSON compte de service (jamais dans le repo)
 - `FIREBASE_PROJECT_ID` — `membremedia`
 
-Voir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Voir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) et [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md).
 
 ---
 
