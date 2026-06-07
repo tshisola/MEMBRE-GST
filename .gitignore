@@ -1,0 +1,92 @@
+# --- Secrets & credentials (NEVER commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+serviceAccountKey.json
+**/serviceAccount*.json
+**/firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+**/secrets/
+**/credentials/
+
+# --- Flutter / Dart ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+coverage/
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# --- Android ---
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle/
+/android/local.properties
+/android/key.properties
+*.jks
+*.keystore
+
+# --- iOS ---
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# --- IDE ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Node / Firebase Functions ---
+node_modules/
+functions/node_modules/
+functions/lib/
+functions/.runtimeconfig.json
+
+# --- Logs & temp ---
+*.log
+logs/
+*.tmp
+*.temp
+migrate_working_dir/
+.history/
+.atom/
+.build/
+.buildlog/
+
+# --- Misc ---
+.firebase/
+*.class
+*.pyc
+.svn/
+.swiftpm/
+supabase/.temp/
+app.*.symbols
+app.*.map.json
+
+# --- Password / sensitive data files ---
+*password*.txt
+*passwords*
+*credentials*.txt
+staff_secrets.*

@@ -1,0 +1,4 @@
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=ifcm_release
+storeFile=../keystore/ifcm-release.jks

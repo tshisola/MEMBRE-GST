@@ -1,0 +1,71 @@
+name: Deploy Firebase (Rules, Indexes, Functions)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "functions/**"
+      - ".github/workflows/deploy_firebase.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-firebase-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install Functions dependencies
+        working-directory: functions
+        run: npm ci || npm install
+
+      - name: Build Functions
+        working-directory: functions
+        run: npm run build
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore Rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "${{ runner.temp }}/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="${{ runner.temp }}/firebase-sa.json"
+          firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Deploy Firestore Indexes
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="${{ runner.temp }}/firebase-sa.json"
+          firebase deploy --only firestore:indexes --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Deploy Cloud Functions
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="${{ runner.temp }}/firebase-sa.json"
+          firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
+        continue-on-error: true
+
+      - name: Functions deploy note
+        if: failure()
+        run: |
+          echo "::warning::Cloud Functions deploy failed. Blaze plan may be required."

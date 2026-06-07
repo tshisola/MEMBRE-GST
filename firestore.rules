@@ -1,0 +1,514 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDocExists() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && userDocExists() && (
+        userDoc().role == role ||
+        (userDoc().roles is list && role in userDoc().roles)
+      );
+    }
+
+    function hasPermission(permission) {
+      return isSignedIn() && userDocExists() &&
+        (userDoc().permissions is list && permission in userDoc().permissions);
+    }
+
+    function isAdminOwner() {
+      return hasRole('admin_general_owner');
+    }
+
+    function isAdminGeneral() {
+      return hasRole('admin_general') || isAdminOwner();
+    }
+
+    function canDeleteAccount() {
+      return isAdminOwner();
+    }
+
+    function isAdminGeneralOwner() {
+      return isAdminOwner();
+    }
+
+    function isMember() {
+      return hasRole('member') || hasRole('media_member');
+    }
+
+    function isAttendanceOperator() {
+      return hasRole('attendance_operator');
+    }
+
+    function canDeleteMember() {
+      return isAdminOwner() ||
+        (hasRole('admin_general') && hasPermission('can_delete_member'));
+    }
+
+    function canRestoreMember() {
+      return canDeleteMember() || isAdminOwner();
+    }
+
+    function canRequestDeleteMember() {
+      return hasRole('department_chief') && !isMember();
+    }
+
+    function memberCannotSeeDeletedMeta() {
+      return isMember();
+    }
+
+    function canTakeAttendance() {
+      return hasPermission('can_take_attendance') ||
+        hasPermission('can_take_media_attendance') ||
+        hasPermission('can_create_attendance_record') ||
+        isAttendanceOperator() ||
+        hasRole('media_lead') ||
+        hasRole('media_operator') ||
+        hasPermission('can_view_media_lists');
+    }
+
+    function canReadMediaLists() {
+      return isSignedIn() && (
+        isAdminGeneral() ||
+        hasPermission('can_manage_media_lists') ||
+        hasPermission('can_view_media_lists') ||
+        canTakeAttendance() ||
+        hasRole('attendance_operator') ||
+        hasRole('media_lead') ||
+        hasRole('media_operator')
+      );
+    }
+
+    function canWriteMediaLists() {
+      return isAdminGeneral() ||
+        hasPermission('can_manage_media_lists') ||
+        hasPermission('can_create_media_list') ||
+        hasPermission('can_generate_media_auto_list') ||
+        canManageDepartment('media') ||
+        canTakeAttendance();
+    }
+
+    function canExportMediaList() {
+      return canReadMediaLists() &&
+        (isAdminGeneral() ||
+          hasPermission('can_export_media_pdf') ||
+          hasPermission('can_export_media_csv') ||
+          hasPermission('can_export_media_list') ||
+          hasPermission('can_export_pdf') ||
+          hasPermission('can_export_csv') ||
+          hasPermission('can_manage_media_lists'));
+    }
+
+    function canExportMemberList() {
+      return isAdminGeneral() ||
+        hasPermission('can_export_member_list') ||
+        hasPermission('can_export_pdf') ||
+        hasPermission('can_read_all_members');
+    }
+
+    function canExportAttendanceList() {
+      return isAdminGeneral() ||
+        hasPermission('can_export_attendance_list') ||
+        hasPermission('can_take_attendance') ||
+        isAttendanceOperator();
+    }
+
+    function canExportDepartmentList() {
+      return isAdminGeneral() ||
+        hasPermission('can_export_department_list') ||
+        hasPermission('can_manage_department_lists');
+    }
+
+    function canManageDepartment(departmentId) {
+      return isAdminGeneral() ||
+        (hasRole('department_chief') && userDoc().departmentId == departmentId);
+    }
+
+    function isMemberRestricted() {
+      return hasRole('member');
+    }
+
+    function isOwner(memberId) {
+      return isSignedIn() && userDoc().memberId == memberId;
+    }
+
+    function isAssignedPastor(memberId) {
+      return isSignedIn() &&
+        (hasRole('pastor') || hasRole('admin_general')) &&
+        get(/databases/$(database)/documents/members/$(memberId)).data.pastorId == request.auth.uid;
+    }
+
+    function isAssignedDisciple(memberId) {
+      return isSignedIn() &&
+        (hasRole('disciple') || hasRole('admin_general')) &&
+        get(/databases/$(database)/documents/members/$(memberId)).data.discipleId == request.auth.uid;
+    }
+
+    function isNotMemberTryingAdminData() {
+      return !hasRole('member');
+    }
+
+    function isAdminSimple() {
+      return hasRole('admin_simple');
+    }
+
+    function canReadAllMembers() {
+      return isAdminGeneral() ||
+        isAdminSimple() ||
+        hasPermission('can_read_all_members') ||
+        hasPermission('can_view_member_list') ||
+        hasPermission('can_manage_members');
+    }
+
+    function canReadMembers() {
+      return canReadAllMembers() || canReadMembersForAttendance();
+    }
+
+    function canReadMembersForAttendance() {
+      return canTakeAttendance() ||
+        isAttendanceOperator() ||
+        hasRole('media_lead') ||
+        hasRole('media_operator') ||
+        hasPermission('can_read_members_for_attendance') ||
+        hasPermission('can_read_media_members') ||
+        hasPermission('can_take_media_attendance') ||
+        hasPermission('can_search_members');
+    }
+
+    function canReadOwnMember(memberId) {
+      return isOwner(memberId);
+    }
+
+    function canCreateMember() {
+      return isAdminGeneral() ||
+        hasRole('admin') ||
+        hasRole('pasteur') ||
+        hasRole('disciple') ||
+        hasRole('leader') ||
+        hasRole('department_chief') ||
+        hasPermission('can_create_member');
+    }
+
+    function canManageDepartmentMembers(departmentId) {
+      return isAdminGeneral() || canManageDepartment(departmentId);
+    }
+
+    function memberCannotWriteMemberRegistry() {
+      return !hasRole('member');
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && (uid == request.auth.uid || isNotMemberTryingAdminData());
+      allow create: if isSignedIn() && uid == request.auth.uid;
+      allow update: if isAdminOwner() ||
+        (isAdminGeneral() && !isMember() &&
+          !(resource.data.role == 'admin_general_owner' &&
+            request.resource.data.role != 'admin_general_owner')) ||
+        (isSignedIn() && uid == request.auth.uid);
+      allow delete: if isAdminOwner();
+    }
+
+    match /members/{memberId} {
+      allow read: if isSignedIn() && (
+        canReadMembers() || canExportMemberList() || canReadOwnMember(memberId)
+      );
+      allow create: if memberCannotWriteMemberRegistry() && canCreateMember();
+      allow update: if memberCannotWriteMemberRegistry() && (
+        canCreateMember() ||
+        canManageDepartmentMembers(resource.data.departmentId) ||
+        (canDeleteMember() && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['isActive', 'isDeleted', 'deletedAt', 'deletedBy', 'deletedReason', 'updatedAt', 'syncedAt', 'syncStatus']))
+      );
+      allow delete: if isAdminOwner();
+    }
+
+    match /memberQrCodes/{qrId} {
+      allow read: if isSignedIn() && (
+        canReadMembers() ||
+        canReadMembersForAttendance() ||
+        (isMemberRestricted() && resource.data.memberId == userDoc().memberId)
+      );
+      allow create, update: if memberCannotWriteMemberRegistry() && canCreateMember();
+      allow delete: if isAdminGeneral();
+    }
+
+    match /memberAccounts/{accountId} {
+      allow read: if isSignedIn() && (
+        isAdminGeneral() ||
+        canCreateMember() ||
+        accountId == request.auth.uid
+      );
+      allow write: if isAdminGeneral() || canCreateMember();
+    }
+
+    match /departmentManualLists/{listId} {
+      allow read: if canReadMediaLists() || canExportDepartmentList() || isNotMemberTryingAdminData();
+      allow write: if canWriteMediaLists() || isAdminGeneral();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isSignedIn() && (
+        isNotMemberTryingAdminData() ||
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        resource.data.memberId == userDoc().memberId
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'readAt', 'deliveredAt']);
+      allow delete: if isAdminGeneral();
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && !isMemberRestricted();
+      allow create, update: if isNotMemberTryingAdminData();
+      allow delete: if isAdminOwner();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isSignedIn() && (
+        isNotMemberTryingAdminData() ||
+        resource.data.assigneeId == request.auth.uid
+      );
+      allow create, update: if isNotMemberTryingAdminData();
+      allow delete: if isAdminGeneral();
+    }
+
+    match /aiChatHistory/{entryId} {
+      allow read, write: if isAdminOwner();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (
+        isNotMemberTryingAdminData() ||
+        resource.data.memberId == userDoc().memberId
+      );
+      allow create: if isNotMemberTryingAdminData();
+      allow update, delete: if isAdminGeneral();
+    }
+
+    match /weekly_results/{resultId} {
+      allow read: if isSignedIn() && (
+        isNotMemberTryingAdminData() ||
+        resource.data.memberId == userDoc().memberId
+      );
+      allow write: if isNotMemberTryingAdminData();
+    }
+
+    match /attendance_records/{recordId} {
+      allow read: if isNotMemberTryingAdminData();
+      allow create: if canTakeAttendance();
+      allow update, delete: if isAdminGeneral();
+    }
+
+    match /media_attendance/{recordId} {
+      allow read: if isNotMemberTryingAdminData() || canTakeAttendance() || canExportAttendanceList();
+      allow create, update: if canTakeAttendance() || canManageDepartment('media');
+      allow delete: if isAdminGeneral() || canManageDepartment('media');
+    }
+
+    match /media_lists/{listId} {
+      allow read: if canReadMediaLists();
+      allow create, update: if canWriteMediaLists();
+      allow delete: if isAdminGeneral() || canManageDepartment('media');
+    }
+
+    match /media_roles/{roleId} {
+      allow read: if canReadMediaLists();
+      allow write: if canManageDepartment('media') || isAdminGeneral();
+    }
+
+    match /media_members/{memberId} {
+      allow read: if canReadMediaLists();
+      allow write: if canManageDepartment('media') || isAdminGeneral();
+    }
+
+    match /media_member_activation_requests/{requestId} {
+      allow read: if isSignedIn() && (
+        isNotMemberTryingAdminData() ||
+        (request.auth.uid == requestId)
+      );
+      allow create: if isSignedIn() && request.auth.uid == requestId;
+      allow update: if isNotMemberTryingAdminData();
+      allow delete: if isAdminGeneral();
+    }
+
+    match /departments/{departmentId} {
+      allow read: if isSignedIn();
+      allow write: if isAdminGeneral() || canManageDepartment(departmentId);
+    }
+
+    match /syncLogs/{logId} {
+      allow read: if isSignedIn() && (
+        isNotMemberTryingAdminData() ||
+        resource.data.memberId == userDoc().memberId
+      );
+      allow write: if isNotMemberTryingAdminData();
+    }
+
+    match /systemSyncState/{docId} {
+      allow read: if isAdminOwner();
+      allow write: if isAdminOwner();
+    }
+
+    match /sync_queue/{id} {
+      allow read, write: if isNotMemberTryingAdminData();
+    }
+
+    match /admin_actions/{id} {
+      allow read, write: if isNotMemberTryingAdminData();
+    }
+
+    match /system_status/{id} {
+      allow read, write: if isNotMemberTryingAdminData();
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if isAdminGeneral() && !isMember();
+    }
+
+    match /auditLogs/{logId} {
+      allow read, write: if isAdminGeneral() && !isMember();
+    }
+
+    match /adminRecoveryLogs/{logId} {
+      allow read: if isAdminOwner();
+      allow write: if false;
+    }
+
+    match /roles/{roleId} {
+      allow read: if isAdminGeneral() && !isMember();
+      allow write: if isAdminOwner();
+    }
+
+    match /permissions/{permId} {
+      allow read: if isAdminGeneral() && !isMember();
+      allow write: if isAdminOwner();
+    }
+
+    match /deletedMembers/{memberId} {
+      allow read: if isAdminGeneral() && !isMember();
+      allow write: if canDeleteMember();
+    }
+
+    match /memberDeleteRequests/{requestId} {
+      allow read: if isNotMemberTryingAdminData();
+      allow create: if canRequestDeleteMember() || canDeleteMember();
+      allow update: if canDeleteMember();
+      allow delete: if isAdminGeneral();
+    }
+
+    match /delete_requests/{id} {
+      allow read: if isNotMemberTryingAdminData();
+      allow create: if canDeleteAccount();
+      allow update: if isAdminGeneral();
+      allow delete: if isAdminGeneral();
+    }
+
+    match /deleted_accounts/{id} {
+      allow read, write: if isNotMemberTryingAdminData();
+    }
+
+    function canReadRemoteConfig() {
+      return isSignedIn();
+    }
+
+    function canWriteRemoteConfig() {
+      return isAdminOwner() ||
+        (isAdminGeneral() && hasPermission('can_manage_firebase_from_app'));
+    }
+
+    match /app_config/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /ui_config/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /feature_flags/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_texts/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_theme/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_menus/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_dashboards/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_attendance_rules/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_pdf_templates/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_screens/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_components/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_actions/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /remote_layouts/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if canWriteRemoteConfig();
+    }
+
+    match /app_versions/{docId} {
+      allow read: if canReadRemoteConfig();
+      allow write: if isAdminOwner();
+    }
+
+    match /remote_permissions/{docId} {
+      allow read: if isNotMemberTryingAdminData();
+      allow write: if isAdminOwner();
+    }
+
+    match /role_config/{docId} {
+      allow read: if isNotMemberTryingAdminData();
+      allow write: if isAdminOwner();
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdminGeneral();
+    }
+  }
+}

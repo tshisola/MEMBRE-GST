@@ -1,0 +1,23 @@
+{
+  "project_info": {
+    "project_number": "622278481977",
+    "project_id": "membremedia",
+    "storage_bucket": "membremedia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:622278481977:android:REPLACE_ME",
+        "android_client_info": {
+          "package_name": "com.example.ifcm_membership"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyAW3Cd7Cp_nbh3yUKBFDY7BD9nLDyoNAlc"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}
